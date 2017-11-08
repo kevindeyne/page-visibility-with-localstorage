@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>Page Visibility plugin for jQuery</title>
+<style>
+	pre {
+		white-space: pre;
+		white-space: pre-wrap;
+		word-wrap: break-word;
+	}
+</style>
+<h1>Page Visibility plugin for jQuery</h1>
+<p>Open this page twice in the same browser and switch between them. Also contains localstorage load from other tabs but</p>
+<p>When you are opening the files locally, i.e. using the file:// protocol, as of now the browsers can not determine what is "same domain" so every file is considered a separate domain.</p>
+<p>And watch the log below.</p>
+<pre></pre>
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+<script src="jquery-visibility.min.js"></script>
+<script src="jstorage.min.js"></script>
+<script>
+	$(function() {
+		//log stuff	- only for debugging
+		var $pre = $('pre');
+		function log(text) {
+			var dt = new Date();
+			var time = dt.getHours() + ":" + dt.getMinutes() + ":" + dt.getSeconds();		
+			$pre.append(text + ' [' + time + ']' + '<br>');
+		}		
+		//end log stuff	- only for debugging		
+		
+		
+		//-----------
+		
+		var paused = document.hidden; //current state call
+		var timeBetweenPullsInMs = 1000;
+		
+		//actual happy flow method being called x time
+		function activePull() {
+			log('This is a pulling event that pulls every second.');
+			//load this data into jStorage for other tabs to read
+			$.jStorage.set("pulling-demo", $.jStorage.get("pulling-demo", 0) +1, {TTL: 60000})
+		}
+		
+		//
+		$.jStorage.listenKeyChange("pulling-demo", function(key, action){
+			if(paused){
+				log('Change in the session storage during pause: ' + $.jStorage.get(key));
+			}
+		});
+		
+		//function being called recursively, with pause checks
+		function loopedCall() {
+			if(!document.hidden){ //request current state, this could also do a lot, but lacks wide support
+				activePull(); //do the pull here
+			} else if(!paused){
+				log('> Paused (via document hidden), tab not active');
+				paused = true;
+			}
+			setTimeout(function () { loopedCall(); }, timeBetweenPullsInMs); //loop back
+		}
+		
+		retrievedValue = $.jStorage.get("pulling-demo", 0) //initial load
+		loopedCall(); //initial call
+	
+		//jquery-visibility fills in the lacking support with events
+		$(document).on({
+			'show.visibility': function() {
+				paused = false;
+			},
+			'hide.visibility': function() {
+				log('> Paused (via visibility), tab not active');
+				paused = true;
+			}
+		});
+	});
+</script>
